@@ -2,13 +2,18 @@ import random
 import pygame
 import sys
 
-FPS = 50
+clock = pygame.time.Clock()
+FPS = 60
 pygame.init()
 WIDTH = 1920
 HEIGHT = 1080
 player_width = 192
 player_height = 128
 tile_width = tile_height = 64
+main_fon = pygame.transform.scale(pygame.image.load('fon.png'), (WIDTH, HEIGHT))
+town_fon = pygame.transform.scale(pygame.image.load('middleground.png'), (WIDTH, HEIGHT))
+sky = pygame.transform.scale(pygame.image.load('background.png'), (WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 
 def create_frames(image_name, number, width=player_width, height=player_height):
@@ -41,6 +46,7 @@ hit_right, hit_left = create_frames('_Hit.png', 1)
 heavy_death_right, heavy_death_left = create_frames('HeavyBandit_Death_{i}.png', 1, tile_width, tile_height)
 hat_man_right, hat_man_left = create_frames('hat-man-walk-{i}.png', 6, tile_width, tile_height)
 old_man_walk_right, old_man_walk_left = create_frames('oldman-walk-{i}.png', 12, tile_width, tile_height)
+beard_idle_right, beard_idle_left = create_frames('bearded-idle-{i}.png', 5, tile_width, tile_height)
 
 bandit_right = {'walk': walkRight,
                 'hurt': hurt_right,
@@ -87,10 +93,7 @@ tile_images = {
     'block': pygame.image.load('dirt_1.png'),
     'tree': pygame.image.load('tree.png'),
     'rock': pygame.image.load('brevno.png'),
-    'tree_dead': pygame.image.load('tree_dead.png'),
     'cloud': pygame.image.load('cloud (2).png'),
-    'water': pygame.image.load('water.png'),
-    'bush': pygame.image.load('1.png'),
     'point': pygame.image.load('point.png'),
     'house_middle': pygame.image.load('house-a.png'),
     'house': pygame.image.load('house-b.png'),
@@ -98,28 +101,54 @@ tile_images = {
     'road': pygame.image.load('country_road.png'),
     'crate': pygame.image.load('crate.png'),
     'crates_stack': pygame.image.load('crate-stack.png'),
+    'lantern': pygame.image.load('street-lamp.png'),
+    'well': pygame.image.load('well.png'),
+    'wagon': pygame.image.load('wagon.png'),
+    'barrel': pygame.image.load('barrel.png'),
+    'sign': pygame.image.load('sign.png'),
+    'flower': pygame.image.load('flower.png'),
+    'grass': pygame.image.load('grass.png'),
+    'stone': pygame.image.load('stone_1.png'),
+    'bush': pygame.image.load('bush_1.png'),
 }
+for key in tile_images.keys():
+    width = tile_images[key].get_width()
+    height = tile_images[key].get_height()
+    if key in ['tree', 'house_middle', 'house', 'house_c']:
+        width = height = 400
+    if key in ['lantern']:
+        width = 60
+        height = 170
+    if key in ['well', 'wagon']:
+        width = height = 100
+    if key in ['barrel']:
+        width = 35
+        height = 50
+    if key in ['crate']:
+        width = 40
+        height = 40
+    tile_images[key] = pygame.transform.scale(tile_images[key], (width, height))
 player_image = pygame.image.load('knight.png')
 
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
-        super().__init__(tiles_group, all_sprites)
+        super().__init__()
         self.image = tile_images[tile_type]
-        d_x = 0
-        d_y = 0
-        if tile_type in ['tree', 'tree_dead', 'house_middle', 'house', 'house_c']:
-            width = height = 400
-            self.image = pygame.transform.scale(self.image, (width, height))
-            d_x = (width - tile_width) // 2
-            d_y = height - tile_height
+        image_width = self.image.get_width()
+        image_height = self.image.get_height()
+        if tile_type in ['stone', 'well', 'barrel', 'crates-stack', 'crate', 'lantern']:
+            d_y = tile_height // 8
+        else:
+            d_y = 0
         self.rect = self.image.get_rect().move(
-            tile_width * pos_x - d_x, tile_height * pos_y - d_y)
+            tile_width * pos_x + (tile_width - image_width) // 2,
+            tile_height * pos_y + (tile_height - image_height) + d_y)
 
 
 class HpClass(pygame.sprite.Sprite):
-    def __init__(self, player, i):
-        super().__init__(tiles_group, all_sprites)
+    def __init__(self, player, i, group):
+        super().__init__(group)
         self.player = player
         self.i = i
         self.image = pygame.transform.scale(pygame.image.load('hp.png'), (40, 40))
@@ -133,7 +162,7 @@ class HpClass(pygame.sprite.Sprite):
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
-        super().__init__(player_group, all_sprites)
+        super().__init__()
         self.cur_frame = 0
         self.level = []
         self.d_x = 0
@@ -346,7 +375,7 @@ class Player(pygame.sprite.Sprite):
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y, end):
-        super().__init__(all_sprites)
+        super().__init__()
         self.image = walkLeft[0]
         self.rect = self.image.get_rect().move(
             tile_width * x + 15, tile_height * y + 5)
@@ -426,7 +455,7 @@ class Enemy(pygame.sprite.Sprite):
 
 class HatMan(pygame.sprite.Sprite):
     def __init__(self, x, y, end):
-        super().__init__(all_sprites)
+        super().__init__()
         self.image = walkLeft[0]
         self.rect = self.image.get_rect().move(
             tile_width * x + 15, tile_height * y + 5)
@@ -458,7 +487,8 @@ class HatMan(pygame.sprite.Sprite):
         self.slow += 1
         self.cur_frame %= len(animation)
         self.image = animation[self.cur_frame]
-        self.cur_frame += 1
+        if self.slow % 3 >= 1:
+            self.cur_frame += 1
         self.rect.x += tile_width * d_x
         self.x += d_x
 
@@ -468,7 +498,7 @@ class HatMan(pygame.sprite.Sprite):
 
 class OldMan(pygame.sprite.Sprite):
     def __init__(self, x, y, end):
-        super().__init__(all_sprites)
+        super().__init__()
         self.image = walkLeft[0]
         self.rect = self.image.get_rect().move(
             tile_width * x + 15, tile_height * y + 5)
@@ -497,10 +527,11 @@ class OldMan(pygame.sprite.Sprite):
         animation = animations
         if self.slow % 5 != 0:
             d_x = 0
-        self.slow += 1
         self.cur_frame %= len(animation)
         self.image = animation[self.cur_frame]
-        self.cur_frame += 1
+        if self.slow % 3 >= 1:
+            self.cur_frame += 1
+        self.slow += 1
         self.rect.x += tile_width * d_x
         self.x += d_x
 
@@ -508,9 +539,40 @@ class OldMan(pygame.sprite.Sprite):
         pass
 
 
+class BeardMan(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = walkLeft[0]
+        self.rect = self.image.get_rect().move(
+            tile_width * x + 15, tile_height * y + 5)
+        self.x = x
+        self.y = y
+        self.right_side = True
+        self.cur_frame = 0
+        self.slow = 0
+
+    def add_player(self, player):
+        self.player = player
+
+    def update(self):
+        if self.x < self.player.x:
+            animation = beard_idle_right
+        else:
+            animation = beard_idle_left
+
+        self.cur_frame %= len(animation)
+        self.image = animation[self.cur_frame]
+        if self.slow % 5 == 0:
+            self.cur_frame += 1
+        self.slow += 1
+
+    def hit(self, x, y):
+        pass
+    
+
 class EnemyHeavy(pygame.sprite.Sprite):
     def __init__(self, x, y):
-        super().__init__(all_sprites)
+        super().__init__()
         self.image = heavy_hurt_right[0]
         self.rect = self.image.get_rect().move(
             tile_width * x + 15, tile_height * y + 5)
@@ -584,17 +646,7 @@ def load_level(filename='game_map.txt'):
     return level_list
 
 
-player = None
-
-all_sprites = pygame.sprite.Group()
-tiles_group = pygame.sprite.Group()
-player_group = pygame.sprite.Group()
-enemy_group = pygame.sprite.Group()
-
-health_group = pygame.sprite.Group()
-
-
-def generate_level(level):
+def generate_level(level, all_sprites, tiles_group, front_tiles_group, player_group, enemy_group):
     new_player, x, y = None, None, None
     enemies = []
     for y in range(len(level)):
@@ -615,24 +667,48 @@ def generate_level(level):
                 tile = Tile('house_middle', x, y)
                 all_sprites.add(tile)
                 tiles_group.add(tile)
+            elif level[y][x] == 'b':
+                tile = Tile('barrel', x, y)
+                all_sprites.add(tile)
+                front_tiles_group.add(tile)
             elif level[y][x] == '+':
                 tile = Tile('house', x, y)
                 all_sprites.add(tile)
                 tiles_group.add(tile)
-            elif level[y][x] == '/':
+            elif level[y][x] == '|':
+                tile = Tile('lantern', x, y)
+                all_sprites.add(tile)
+                front_tiles_group.add(tile)
+            elif level[y][x] == 's':
+                tile = Tile('stone', x, y)
+                all_sprites.add(tile)
+                front_tiles_group.add(tile)
+            elif level[y][x] == 'u':
                 tile = Tile('bush', x, y)
                 all_sprites.add(tile)
+                front_tiles_group.add(tile)
+            elif level[y][x] == 'g':
+                tile = Tile('grass', x, y)
+                all_sprites.add(tile)
                 tiles_group.add(tile)
+            elif level[y][x] == '6':
+                tile = Tile('wagon', x, y)
+                all_sprites.add(tile)
+                front_tiles_group.add(tile)
             elif level[y][x] == ';':
                 tile = Tile('house_c', x, y)
                 all_sprites.add(tile)
                 tiles_group.add(tile)
+            elif level[y][x] == ',':
+                tile = Tile('well', x, y)
+                all_sprites.add(tile)
+                front_tiles_group.add(tile)
             elif level[y][x] == '*':
                 tile = Tile('road', x, y)
                 all_sprites.add(tile)
                 tiles_group.add(tile)
-            elif level[y][x] == '#':
-                tile = Tile('rock', x, y)
+            elif level[y][x] == 'f':
+                tile = Tile('flower', x, y)
                 all_sprites.add(tile)
                 tiles_group.add(tile)
             elif level[y][x] == '%':
@@ -650,11 +726,11 @@ def generate_level(level):
             elif level[y][x] == '.':
                 tile = Tile('crate', x, y)
                 all_sprites.add(tile)
-                tiles_group.add(tile)
+                front_tiles_group.add(tile)
             elif level[y][x] == '&':
                 tile = Tile('crates_stack', x, y)
                 all_sprites.add(tile)
-                tiles_group.add(tile)
+                front_tiles_group.add(tile)
             elif level[y][x] == '@':
                 new_player = Player(x, y)
                 all_sprites.add(new_player)
@@ -679,7 +755,12 @@ def generate_level(level):
                 enemies.append(oldman)
                 all_sprites.add(oldman)
                 enemy_group.add(oldman)
-    return new_player, x, y, enemies
+            elif level[y][x] == '4':
+                beardman = BeardMan(x, y)
+                enemies.append(beardman)
+                all_sprites.add(beardman)
+                enemy_group.add(beardman)
+    return new_player, x, y, enemies, all_sprites, tiles_group, front_tiles_group, player_group, enemy_group
 
 
 class Camera:
@@ -705,19 +786,42 @@ def terminate():
     sys.exit()
 
 
-def main(screen, fon):
+def get_fon(level, player):
+    x = player.x
+    column = []
+    for i in range(len(level)):
+        column.append(level[i][x])
+    if '*' in column:
+        fons = [sky, town_fon]
+    else:
+        fons = [main_fon]
+    return fons
+
+
+def main():
     camera = Camera()
-    clock = pygame.time.Clock()
+    all_sprites = pygame.sprite.Group()
+    tiles_group = pygame.sprite.Group()
+    front_tiles_group = pygame.sprite.Group()
+    player_group = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()
+
+    health_group = pygame.sprite.Group()
+
     level = load_level()
-    new_player, x, y, enemies = generate_level(level)
+    new_player, x, y, enemies, all_sprites, tiles_group, front_tiles_group, player_group,\
+        enemy_group = generate_level(level, all_sprites, tiles_group, front_tiles_group, player_group, enemy_group)
     new_player.add_enemies(enemies)
     for enemy in enemies:
         enemy.add_player(new_player)
     new_player.add_level(level)
     for i in range(new_player.hp):
-        hp = HpClass(new_player, i + 1)
+        hp = HpClass(new_player, i + 1, health_group)
         health_group.add(hp)
     while True:
+        if new_player.hp <= 0:
+            death_screen()
+            return
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
@@ -727,7 +831,9 @@ def main(screen, fon):
                 new_player.change_status(event.key, False)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 new_player.change_status(event.button, True, True)
-        screen.blit(fon, (0, 0))
+        fons = get_fon(level, new_player)
+        for fon in fons:
+            screen.blit(fon, (0, 0))
         all_sprites.update()
         health_group.update()
         camera.update(new_player)
@@ -736,22 +842,21 @@ def main(screen, fon):
         for sprite in health_group:
             camera.apply(sprite, True)
         tiles_group.draw(screen)
+        front_tiles_group.draw(screen)
         enemy_group.draw(screen)
         player_group.draw(screen)
+        health_group.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
 
 def start_screen():
-    clock = pygame.time.Clock()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
     intro_text = ["ЗАСТАВКА", "",
                   "Правила игры",
                   "Если в правилах несколько строк,",
                   "приходится выводить их построчно"]
 
-    load_screen = pygame.transform.scale(pygame.image.load('aboba.jpg'), (WIDTH, HEIGHT))
-    fon = pygame.transform.scale(pygame.image.load('fon.png'), (WIDTH, HEIGHT))
+    load_screen = pygame.transform.scale(pygame.image.load('aaaa.jpg'), (WIDTH, HEIGHT))
     screen.blit(load_screen, (0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 50
@@ -770,7 +875,39 @@ def start_screen():
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
-                main(screen, fon)
+                main()
+                return
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def death_screen():
+    intro_text = ["ЭКРАН СМЕРТИ_", "",
+                  "Правила игры",
+                  "Если в правилах несколько строк,",
+                  "приходится выводить их построчно"]
+
+    load_screen = sky
+    screen.blit(load_screen, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, True, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                start_screen()
+                return
         pygame.display.flip()
         clock.tick(FPS)
 
