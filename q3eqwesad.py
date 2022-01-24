@@ -1100,9 +1100,11 @@ def main():
 
 def start_screen():
     intro_text = ["ЗАСТАВКА", "",
-                  "Правила игры",
-                  "Если в правилах несколько строк,",
-                  "приходится выводить их построчно"]
+                  "A - Движение назад",
+                  "D - Движение вперёд",
+                  "Mouse_buttin1 - Слабая атака",
+                  "Mouse_button-2 - Сильная атака",
+                  "Space - прыжок"]
 
     load_screen = pygame.transform.scale(pygame.image.load('aaaa.jpg'), (WIDTH, HEIGHT))
     screen.blit(load_screen, (0, 0))
